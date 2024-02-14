@@ -1,6 +1,6 @@
 {
   "train_data_for_Qwen": {
-    "ms_hub_url": "j869903116/train_data_for_Qwen/train_data_for_Qwen.json",
+    "ms_hub_url": "j869903116/train_data_for_Qwen",
     "formatting": "sharegpt",
     "columns": {
     "messages": "conversations"
