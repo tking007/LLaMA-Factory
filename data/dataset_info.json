@@ -12,6 +12,19 @@
     "assistant_tag": "assistant"
   }
   },
+    "train_data_for_Qwen_hf": {
+    "ms_hub_url": "jtjt520j/train_data_for_qwen",
+    "formatting": "sharegpt",
+    "columns": {
+    "messages": "conversations"
+    },
+  "tags": {
+    "role_tag": "from",
+    "content_tag": "value",
+    "user_tag": "user",
+    "assistant_tag": "assistant"
+  }
+  },
   "train_data_for_Qwen_local_file": {
     "file_name": "train_data_for_Qwen.json",
     "formatting": "sharegpt",
