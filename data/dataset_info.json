@@ -1,4 +1,56 @@
 {
+  "train_data_for_qwen_ms": {
+    "ms_hub_url": "j869903116/train_data_for_Qwen",
+    "formatting": "sharegpt",
+    "columns": {
+    "messages": "conversations"
+    },
+  "tags": {
+    "role_tag": "from",
+    "content_tag": "value",
+    "user_tag": "user",
+    "assistant_tag": "assistant"
+  }
+  },
+  "train_data_for_qwen_hf": {
+    "hf_hub_url": "jtjt520j/train_data_for_qwen",
+    "formatting": "sharegpt",
+    "columns": {
+    "messages": "conversations"
+    },
+  "tags": {
+    "role_tag": "from",
+    "content_tag": "value",
+    "user_tag": "user",
+    "assistant_tag": "assistant"
+  }
+  },
+    "openi_train_data_for_Qwen": {
+    "script_url": "dataset_path",
+    "formatting": "sharegpt",
+    "columns": {
+    "messages": "conversations"
+    },
+  "tags": {
+    "role_tag": "from",
+    "content_tag": "value",
+    "user_tag": "user",
+    "assistant_tag": "assistant"
+  }
+  },
+  "train_data_for_Qwen_local_file": {
+    "file_name": "train_data_for_Qwen.json",
+    "formatting": "sharegpt",
+    "columns": {
+    "messages": "conversations"
+    },
+  "tags": {
+    "role_tag": "from",
+    "content_tag": "value",
+    "user_tag": "user",
+    "assistant_tag": "assistant"
+  }
+  },
   "alpaca_en": {
     "file_name": "alpaca_data_en_52k.json",
     "file_sha1": "607f94a7f581341e59685aef32f531095232cf23"
