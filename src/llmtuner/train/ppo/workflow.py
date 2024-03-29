@@ -13,7 +13,7 @@ from ...extras.callbacks import FixValueHeadModelCallback
 from ...extras.misc import fix_valuehead_checkpoint
 from ...extras.ploting import plot_loss
 from ...model import load_model, load_tokenizer
-from ..utils import create_custom_optimzer, create_ref_model, create_reward_model
+from ..utils import create_custom_optimzer, create_custom_scheduler, create_ref_model, create_reward_model
 from .trainer import CustomPPOTrainer
 
 
@@ -55,11 +55,11 @@ def run_ppo(
         seed=training_args.seed,
         optimize_device_cache=True,
         target=finetuning_args.ppo_target,
-        log_with=finetuning_args.ppo_logger,
         use_score_scaling=finetuning_args.ppo_score_norm,
         use_score_norm=finetuning_args.ppo_score_norm,
         whiten_rewards=finetuning_args.ppo_whiten_rewards,
         accelerator_kwargs={"step_scheduler_with_optimizer": False},
+        log_with=training_args.report_to[0] if training_args.report_to is not None else None,
         project_kwargs={"logging_dir": training_args.logging_dir},
     )
 
@@ -70,10 +70,11 @@ def run_ppo(
         total_train_batch_size = backward_batch_size * finetuning_args.ppo_buffer_size * training_args.world_size
         num_training_steps = training_args.num_train_epochs * math.ceil(len(dataset) / total_train_batch_size)
 
-    optimizer = create_custom_optimzer(model, training_args, finetuning_args, num_training_steps)
+    optimizer = create_custom_optimzer(model, training_args, finetuning_args)
     if optimizer is None:
         optimizer = AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=training_args.learning_rate)
 
+    create_custom_scheduler(training_args, num_training_steps, optimizer)
     lr_scheduler = get_scheduler(
         training_args.lr_scheduler_type,
         optimizer=optimizer,
