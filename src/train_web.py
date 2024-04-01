@@ -2,9 +2,10 @@ from llmtuner import create_ui
 
 
 def main():
-    demo = create_ui()
-    demo.queue()
-    demo.launch(server_name="0.0.0.0", server_port=8080, share=True, inbrowser=True)
+    # demo = create_ui()
+    # demo.queue()
+    # demo.launch(server_name="0.0.0.0", server_port=8080, share=True, inbrowser=True)
+    create_ui().queue().launch(server_name="0.0.0.0", server_port=None, share=True, inbrowser=True)
 
 
 if __name__ == "__main__":
