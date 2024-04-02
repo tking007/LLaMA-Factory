@@ -208,11 +208,6 @@ def _configure_quantization(
         logger.info("Quantizing model to {} bit.".format(model_args.export_quantization_bit))
 
     elif model_args.quantization_bit is not None:  # bnb
-        if is_deepspeed_zero3_enabled():
-            require_version("transformers>=4.39.0", "To fix: pip install transformers>=4.39.0")
-            require_version("accelerate>=0.28.0", "To fix: pip install accelerate>=0.28.0")
-            require_version("bitsandbytes>=0.43.0", "To fix: pip install bitsandbytes>=0.43.0")
-
         if model_args.quantization_bit == 8:
             require_version("bitsandbytes>=0.37.0", "To fix: pip install bitsandbytes>=0.37.0")
             init_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
@@ -227,8 +222,23 @@ def _configure_quantization(
                 bnb_4bit_quant_storage=model_args.compute_dtype,  # crucial for fsdp qlora
             )
 
-        init_kwargs["device_map"] = {"": get_current_device()}
+        if is_deepspeed_zero3_enabled() or model_args.quantization_device_map == "auto":
+            if model_args.quantization_bit != 4:
+                raise ValueError("Only 4-bit quantized model can use auto device map.")
+
+            require_version("transformers>=4.39.0", "To fix: pip install transformers>=4.39.0")
+            require_version("accelerate>=0.28.0", "To fix: pip install accelerate>=0.28.0")
+            require_version("bitsandbytes>=0.43.0", "To fix: pip install bitsandbytes>=0.43.0")
+        else:
+            init_kwargs["device_map"] = {"": get_current_device()}
+
         logger.info("Quantizing model to {} bit.".format(model_args.quantization_bit))
+
+
+def _fp32_forward_post_hook(
+    module: "torch.nn.Module", args: Tuple["torch.Tensor"], output: "torch.Tensor"
+) -> "torch.Tensor":
+    return output.to(torch.float32)
 
 
 def _prepare_model_for_training(
@@ -259,14 +269,10 @@ def _prepare_model_for_training(
             logger.info("Gradient checkpointing enabled.")
 
     if hasattr(model, output_layer_name) and model_args.upcast_lmhead_output:
-
-        def fp32_forward_post_hook(module: torch.nn.Module, args: Tuple[torch.Tensor], output: torch.Tensor):
-            return output.to(torch.float32)
-
         logger.info("Upcasting lm_head outputs in float32.")
         output_layer = getattr(model, output_layer_name)
         if isinstance(output_layer, torch.nn.Linear) and output_layer.weight.dtype != torch.float32:
-            output_layer.register_forward_hook(fp32_forward_post_hook)
+            output_layer.register_forward_hook(_fp32_forward_post_hook)
 
 
 def patch_tokenizer(tokenizer: "PreTrainedTokenizer") -> None:
@@ -312,13 +318,6 @@ def patch_config(
 def patch_model(
     model: "PreTrainedModel", tokenizer: "PreTrainedTokenizer", model_args: "ModelArguments", is_trainable: bool
 ) -> None:
-    if "GenerationMixin" not in str(model.generate.__func__):
-        model.generate = MethodType(PreTrainedModel.generate, model)
-
-    if getattr(model.config, "model_type", None) == "chatglm":
-        setattr(model, "lm_head", model.transformer.output_layer)
-        setattr(model, "_keys_to_ignore_on_save", ["lm_head.weight"])
-
     gen_config = model.generation_config  # check and fix generation config
     if not gen_config.do_sample and (
         (gen_config.temperature is not None and gen_config.temperature != 1.0)
@@ -327,7 +326,17 @@ def patch_model(
     ):
         gen_config.do_sample = True
 
-    if model_args.resize_vocab:
+    if "GenerationMixin" not in str(model.generate.__func__):
+        model.generate = MethodType(PreTrainedModel.generate, model)
+
+    if is_trainable and getattr(model.config, "model_type", None) == "chatglm":
+        setattr(model, "lm_head", model.transformer.output_layer)
+        setattr(model, "_keys_to_ignore_on_save", ["lm_head.weight"])
+
+    if is_trainable and getattr(model.config, "model_type", None) == "qwen2" and model_args.flash_attn:
+        setattr(model.config, "use_cache", False)  # qwen2 does not support use_cache when using flashattn
+
+    if is_trainable and model_args.resize_vocab:
         _resize_embedding_layer(model, tokenizer)
 
     if is_trainable:
